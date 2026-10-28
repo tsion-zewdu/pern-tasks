@@ -62,4 +62,10 @@ app.delete("/api/tasks/:id", async (req, res) => {
 }
 });
 
-app.listen(process.env.PORT, () => console.log("Server running on port " + process.env.PORT));
+   app.listen(process.env.PORT, (err) => {
+     if (err) {
+       console.error("Could not start server:", err.message);
+       return;
+     }
+     console.log("Server running on port " + process.env.PORT);
+   });
