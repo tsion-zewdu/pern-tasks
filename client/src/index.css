@@ -37,3 +37,21 @@ ul { list-style: none; padding: 0; }
 @media (max-width: 480px) {
   .container { margin: 20px auto; }
 }
+
+.auth-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: white; padding: 20px; border-radius: 8px;
+}
+.auth-card input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+.auth-card .switch { color: #2563eb; cursor: pointer; margin: 0; text-align: center; }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.badge {
+  background: #e0e7ff; color: #3730a3; font-size: 12px;
+  padding: 2px 8px; border-radius: 999px;
+}
+.panel { margin-top: 32px; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }

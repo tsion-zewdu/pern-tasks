@@ -1,77 +1,109 @@
 import { useState, useEffect } from "react";
+import { api } from "./api";
+import AuthForm from "./components/AuthForm";
 import TaskForm from "./components/TaskForm";
 import TaskItem from "./components/TaskItem";
+import UsersPanel from "./components/UsersPanel";
 import "./App.css";
 
-const API = "http://localhost:5000/api/tasks";
-
 export default function App() {
+  // start from whatever is saved in the browser, so a refresh keeps you logged in
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  });
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // READ: get all tasks from the API
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setTasks([]);
+  };
+
+  const handleAuth = ({ user, token }) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    setUser(user);
+  };
+
+  // if the server says the token is bad or expired, log out
+  const handleError = (err) => {
+    if (err.status === 401) logout();
+    else setError(err.message);
+  };
+
   const loadTasks = async () => {
+    setLoading(true);
     try {
-      const res = await fetch(API);
-      if (!res.ok) throw new Error("Could not load tasks");
-      setTasks(await res.json());
+      setTasks(await api("/tasks"));
       setError("");
     } catch (err) {
-      setError(err.message);
+      handleError(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // runs once, when the page first opens
+  // load tasks whenever someone logs in
   useEffect(() => {
-    loadTasks();
-  }, []);
+    if (user) loadTasks();
+  }, [user]);
 
-  // CREATE
   const addTask = async (title) => {
     try {
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) throw new Error("Could not add task");
+      await api("/tasks", { method: "POST", body: JSON.stringify({ title }) });
       loadTasks();
     } catch (err) {
-      setError(err.message);
+      handleError(err);
     }
   };
 
-  // UPDATE
   const toggleTask = async (task) => {
     try {
-      const res = await fetch(`${API}/${task.id}`, {
+      await api(`/tasks/${task.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ done: !task.done }),
       });
-      if (!res.ok) throw new Error("Could not update task");
       loadTasks();
     } catch (err) {
-      setError(err.message);
+      handleError(err);
     }
   };
 
-  // DELETE
   const deleteTask = async (id) => {
     try {
-      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Could not delete task");
+      await api(`/tasks/${id}`, { method: "DELETE" });
       loadTasks();
     } catch (err) {
-      setError(err.message);
+      handleError(err);
     }
   };
+
+  // not logged in: show the login/signup form
+  if (!user) {
+    return (
+      <div className="container">
+        <h1>My Tasks</h1>
+        <AuthForm onAuth={handleAuth} />
+      </div>
+    );
+  }
 
   return (
     <div className="container">
+      <div className="topbar">
+        <span>
+          Hi, {user.name} <span className="badge">{user.role}</span>
+        </span>
+        <button onClick={logout}>Log out</button>
+      </div>
+
       <h1>My Tasks</h1>
       <TaskForm onAdd={addTask} />
 
@@ -86,9 +118,12 @@ export default function App() {
             task={task}
             onToggle={toggleTask}
             onDelete={deleteTask}
+            showOwner={user.role === "admin"}
           />
         ))}
       </ul>
+
+      {user.role === "admin" && <UsersPanel />}
     </div>
   );
 }
