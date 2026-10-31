@@ -8,6 +8,16 @@ const { requireAuth, requireRole } = require("./middleware/auth");
 const app = express();
 app.use(cors());
 app.use(express.json());
+// returns an error message if the title is bad, or null if it is fine
+function checkTitle(title) {
+  if (typeof title !== "string" || !title.trim()) {
+    return "Title is required";
+  }
+  if (title.trim().length > 255) {
+    return "Title must be 255 characters or less";
+  }
+  return null;
+}
 
 // signup, login, me
 app.use("/api/auth", authRoutes);
@@ -45,12 +55,12 @@ app.get("/api/tasks", requireAuth, async (req, res) => {
 // CREATE: the task is saved with the logged-in user's id
 app.post("/api/tasks", requireAuth, async (req, res) => {
   try {
-    const { title } = req.body;
-    if (!title) return res.status(400).json({ error: "Title is required" });
+    const problem = checkTitle(req.body.title);
+    if (problem) return res.status(400).json({ error: problem });
 
     const result = await pool.query(
       "INSERT INTO tasks (title, user_id) VALUES ($1, $2) RETURNING *",
-      [title, req.user.id]
+      [req.body.title.trim(), req.user.id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -62,7 +72,24 @@ app.post("/api/tasks", requireAuth, async (req, res) => {
 // UPDATE: only the owner or an admin
 app.put("/api/tasks/:id", requireAuth, async (req, res) => {
   try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid task id" });
+    }
+
     const { title, done } = req.body;
+
+    if (title === undefined && done === undefined) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+    if (title !== undefined) {
+      const problem = checkTitle(title);
+      if (problem) return res.status(400).json({ error: problem });
+    }
+    if (done !== undefined && typeof done !== "boolean") {
+      return res.status(400).json({ error: "done must be true or false" });
+    }
+
     const isAdmin = req.user.role === "admin";
 
     const result = await pool.query(
@@ -70,7 +97,7 @@ app.put("/api/tasks/:id", requireAuth, async (req, res) => {
        SET title = COALESCE($1, title), done = COALESCE($2, done)
        WHERE id = $3 AND ($4 OR user_id = $5)
        RETURNING *`,
-      [title, done, req.params.id, isAdmin, req.user.id]
+      [title === undefined ? null : title.trim(), done ?? null, id, isAdmin, req.user.id]
     );
 
     if (result.rowCount === 0) return res.status(404).json({ error: "Task not found" });
@@ -84,6 +111,11 @@ app.put("/api/tasks/:id", requireAuth, async (req, res) => {
 // DELETE: only the owner or an admin
 app.delete("/api/tasks/:id", requireAuth, async (req, res) => {
   try {
+        const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid task id" });
+    }
+    
     const isAdmin = req.user.role === "admin";
 
     const result = await pool.query(
