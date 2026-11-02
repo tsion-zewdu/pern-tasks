@@ -6,8 +6,18 @@ const authRoutes = require("./routes/auth");
 const { requireAuth, requireRole } = require("./middleware/auth");
 
 const app = express();
-app.use(cors());
+// FRONTEND_URL lists the websites allowed to call this API.
+// If it is not set (like on your computer), any site is allowed.
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",")
+  : true;
+app.use(cors({ origin: allowedOrigins }));
+
 app.use(express.json());
+// quick check that the server is alive
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Task API is running" });
+});
 // returns an error message if the title is bad, or null if it is fine
 function checkTitle(title) {
   if (typeof title !== "string" || !title.trim()) {
