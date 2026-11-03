@@ -133,6 +133,13 @@ Protected routes need the header `Authorization: Bearer <token>`.
 
 ## Live demo
 
+- **App:** https://pern-taskss.netlify.app
+- **API:** https://pern-tasks-api.onrender.com
+
+Hosting: React on Netlify, Express on Render, PostgreSQL on Neon (all free tiers).
+
+> The API runs on Render's free plan, which sleeps after about 15 minutes without traffic. The first request after a quiet period can take up to a minute to respond.
+
 
 ## Author
 
